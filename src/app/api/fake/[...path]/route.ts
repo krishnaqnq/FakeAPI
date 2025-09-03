@@ -3,17 +3,6 @@ import connectDB from '@/lib/db';
 import { ApiProject } from '@/lib/models';
 import { extractTokenFromHeader } from '@/lib/tokenUtils';
 
-// CORS headers configuration
-function getCorsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-API-Key',
-    'Access-Control-Allow-Credentials': 'false',
-    'Access-Control-Max-Age': '86400' // 24 hours
-  };
-}
-
 // Helper function to match endpoint path with project name
 function matchEndpoint(requestPath: string, projectName: string, baseUrl: string, endpointPath: string): boolean {
   // Expected path format: /{projectName}{baseUrl}{endpointPath}
@@ -21,6 +10,15 @@ function matchEndpoint(requestPath: string, projectName: string, baseUrl: string
   const expectedPath = `/${cleanProjectName}${baseUrl}${endpointPath}`;
   
   return requestPath === expectedPath;
+}
+
+// Helper function to add CORS headers to response
+function addCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  response.headers.set('Access-Control-Max-Age', '86400');
+  return response;
 }
 
 // Handle all HTTP methods for fake API endpoints
@@ -33,10 +31,8 @@ async function handleRequest(request: NextRequest, method: string) {
     const pathSegments = url.pathname.split('/api/fake/');
     
     if (pathSegments.length < 2) {
-      return NextResponse.json({ error: 'Invalid API path' }, { 
-        status: 404,
-        headers: getCorsHeaders()
-      });
+      const response = NextResponse.json({ error: 'Invalid API path' }, { status: 404 });
+      return addCorsHeaders(response);
     }
     
     const fullPath = '/' + pathSegments[1];
@@ -57,53 +53,43 @@ async function handleRequest(request: NextRequest, method: string) {
             const providedToken = extractTokenFromHeader(authHeader || '', project.authentication?.tokenPrefix || 'Bearer');
             
             if (!providedToken || providedToken !== project.authentication?.token) {
-              return NextResponse.json({ 
+              const response = NextResponse.json({ 
                 error: 'Unauthorized',
                 message: 'Valid authentication token required',
                 requiredHeader: project.authentication?.headerName || 'Authorization',
                 tokenFormat: `${project.authentication?.tokenPrefix || 'Bearer'} <token>`
-              }, { 
-                status: 401,
-                headers: getCorsHeaders()
-              });
+              }, { status: 401 });
+              return addCorsHeaders(response);
             }
           }
           
           try {
             const responseBody = JSON.parse(endpoint.responseBody);
-            return NextResponse.json(responseBody, { 
-              status: endpoint.statusCode,
-              headers: getCorsHeaders()
-            });
+            const response = NextResponse.json(responseBody, { status: endpoint.statusCode });
+            return addCorsHeaders(response);
           } catch (error) {
             // If JSON parsing fails, return as plain text
-            return new NextResponse(endpoint.responseBody, { 
+            const response = new NextResponse(endpoint.responseBody, { 
               status: endpoint.statusCode,
-              headers: { 
-                'Content-Type': 'text/plain',
-                ...getCorsHeaders()
-              }
+              headers: { 'Content-Type': 'text/plain' }
             });
+            return addCorsHeaders(response);
           }
         }
       }
     }
     
-    return NextResponse.json({ 
+    const notFoundResponse = NextResponse.json({ 
       error: 'Endpoint not found',
       path: fullPath,
       method: method 
-    }, { 
-      status: 404,
-      headers: getCorsHeaders()
-    });
+    }, { status: 404 });
+    return addCorsHeaders(notFoundResponse);
     
   } catch (error) {
     console.error('Fake API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { 
-      status: 500,
-      headers: getCorsHeaders()
-    });
+    const errorResponse = NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return addCorsHeaders(errorResponse);
   }
 }
 
@@ -127,10 +113,8 @@ export async function DELETE(request: NextRequest) {
   return handleRequest(request, 'DELETE');
 }
 
-// Handle CORS preflight requests
 export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: getCorsHeaders()
-  });
+  // Handle preflight requests
+  const response = new NextResponse(null, { status: 200 });
+  return addCorsHeaders(response);
 }
