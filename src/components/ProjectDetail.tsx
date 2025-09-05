@@ -135,11 +135,16 @@ export default function ProjectDetail({ project, onUpdateProject }: ProjectDetai
   };
 
   const handleDeleteEndpoint = (endpointId: string) => {
-    const updatedProject = {
-      ...project,
-      endpoints: project.endpoints.filter(ep => ep._id !== endpointId)
-    };
-    onUpdateProject(updatedProject);
+    const endpoint = project.endpoints.find(ep => ep._id === endpointId);
+    const endpointName = endpoint ? `${endpoint.method} ${endpoint.path}` : 'this endpoint';
+    
+    if (window.confirm(`Are you sure you want to delete ${endpointName}? This action cannot be undone.`)) {
+      const updatedProject = {
+        ...project,
+        endpoints: project.endpoints.filter(ep => ep._id !== endpointId)
+      };
+      onUpdateProject(updatedProject);
+    }
   };
 
   const copyEndpointUrl = (endpoint: Endpoint) => {

@@ -164,7 +164,9 @@ export default function ProjectPanel({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDeleteProject(project._id);
+                        if (window.confirm(`Are you sure you want to delete the project "${project.name}"? This will permanently delete all ${project.endpoints.length} endpoint${project.endpoints.length !== 1 ? 's' : ''} and cannot be undone.`)) {
+                          onDeleteProject(project._id);
+                        }
                       }}
                       className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-400 transition-all"
                     >
